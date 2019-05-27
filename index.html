@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+      * {
+        overflow-y: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="canvas" height="550" width="550" style=" background:#dedede">
+    </canvas>
+
+    <script>
+      "use strict";
+      let canvas = document.getElementById("canvas");
+      let ctx = canvas.getContext("2d");
+      var socket = io();
+      let log = console.log;
+
+      canvas.height = window.innerHeight;
+      canvas.width = window.innerWidth;
+      let height = canvas.height;
+      let width = canvas.width;
+      let circ_R = 35;
+
+      log("refreshed...");
+
+      function rand(min, max) {
+        return Math.floor(Math.random() * (max - min + 1) + min);
+      }
+
+      let monster = {
+        x: 150,
+        y: 200,
+        r: 40,
+        draw: () => {
+          ctx.beginPath();
+          ctx.arc(monster.x, monster.y, monster.r, 0, Math.PI * 2);
+          ctx.fillStyle = "red";
+          ctx.fill();
+        }
+      };
+      let food = {
+        x: rand(50, width - 30),
+        y: rand(50, height - 30),
+        r: 30,
+        draw: () => {
+          ctx.beginPath();
+          ctx.arc(food.x, food.y, food.r, 0, Math.PI * 2);
+          ctx.fillStyle = "green";
+          ctx.fill();
+        }
+      };
+
+      let mouse = {
+        x: canvas.width / 2,
+        y: canvas.width / 2
+      };
+
+      function circle(x, y, r = circ_R, dx = 2, dy = 2) {
+        this.x = x;
+        this.y = y;
+        this.r = r;
+        this.dx = dx;
+        this.dy = dy;
+
+        this.update = () => {
+          this.x += this.dx;
+          this.y += this.dy;
+
+          if (this.x + this.r > width || this.x - this.r < 0) {
+            this.dx = -this.dx;
+          }
+          if (this.y + this.r > height || this.y - this.r < 0) {
+            this.dy = -this.dy;
+          }
+        };
+
+        this.draw = () => {
+          ctx.beginPath();
+          ctx.fillStyle = "blue";
+          ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+          ctx.fill();
+        };
+      }
+
+      // create circles
+      let circles = [];
+
+      for (let i = 0; i < 7; i++) {
+        let randX = rand(circ_R, width - circ_R);
+        let randY = rand(circ_R, height - circ_R);
+        circles.push(new circle(randX, randY, circ_R));
+      }
+
+      canvas.addEventListener("mousemove", function(e) {
+        mouse.x = e.x;
+        mouse.y = e.y;
+        socket.emit("clientSent", { x: mouse.x, y: mouse.y });
+      });
+
+      function shareInfo() {
+        socket.on("serverSent", function(m) {
+          mouse.x = m.x;
+          mouse.y = m.y;
+        });
+      }
+      //distance between points
+      function dist(x1, y1, x2, y2) {
+        return Math.floor(
+          Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2))
+        );
+      }
+      //detect collision
+      function detectCollision() {
+        if (dist(food.x, food.y, monster.x, monster.y) <= monster.r + food.r) {
+          let randX = rand(circ_R, width - circ_R);
+          let randY = rand(circ_R, height - circ_R);
+          food.x = randX;
+          food.y = randY;
+        }
+      }
+
+      //update screen (every time elements are drawn)
+      function update() {
+        if (mouse.x > monster.x) monster.x += 3;
+        if (mouse.y > monster.y) monster.y += 3;
+        if (mouse.x < monster.x) monster.x -= 3;
+        if (mouse.y < monster.y) monster.y -= 3;
+
+        for (let i = 0; i < circles.length; i++) {
+          circles[i].update();
+        }
+        +shareInfo();
+      }
+
+      //draw on screen
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        monster.draw();
+        food.draw();
+        for (let i = 0; i < circles.length; i++) circles[i].draw();
+        update();
+        detectCollision();
+      }
+
+      //refresh screen
+      setInterval(draw);
+    </script>
+  </body>
+</html>
