@@ -25,6 +25,7 @@
       let height = canvas.height;
       let width = canvas.width;
       let circ_R = 35;
+      let score = 0;
 
       log("refreshed...");
 
@@ -33,8 +34,8 @@
       }
 
       let monster = {
-        x: 150,
-        y: 200,
+        x: 80,
+        y: 80,
         r: 40,
         draw: () => {
           ctx.beginPath();
@@ -60,7 +61,7 @@
         y: canvas.width / 2
       };
 
-      function circle(x, y, r = circ_R, dx = 2, dy = 2) {
+      function circle(x, y, r = circ_R, dx = 4, dy = 4) {
         this.x = x;
         this.y = y;
         this.r = r;
@@ -81,19 +82,25 @@
 
         this.draw = () => {
           ctx.beginPath();
-          ctx.fillStyle = "blue";
           ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.stroke();
         };
       }
 
       // create circles
       let circles = [];
 
-      for (let i = 0; i < 7; i++) {
-        let randX = rand(circ_R, width - circ_R);
-        let randY = rand(circ_R, height - circ_R);
-        circles.push(new circle(randX, randY, circ_R));
+      for (let i = 0; i < 20; i++) {
+        let x = rand(circ_R + 80, width - circ_R);
+        let y = rand(circ_R + 80, height - circ_R);
+        for (let j = 0; j < circles.length; j++) {
+          if (dist(circles[j].x, circles[j].y, x, y) < circles[j].r * 2) {
+            x = rand(circ_R + 80, width - circ_R);
+            y = rand(circ_R + 80, height - circ_R);
+            j = -1;
+          }
+        }
+        circles.push(new circle(x, y, circ_R));
       }
 
       canvas.addEventListener("mousemove", function(e) {
@@ -121,15 +128,38 @@
           let randY = rand(circ_R, height - circ_R);
           food.x = randX;
           food.y = randY;
+          score += 1;
+        }
+        for (let i = 0; i < circles.length; i++) {
+          if (
+            dist(circles[i].x, circles[i].y, monster.x, monster.y) <=
+            monster.r + circles[i].r - 3
+          ) {
+            gameOver();
+          }
+        }
+
+        for (var i = 0; i < circles.length; i++) {
+          for (let j = 0; j < circles.length; j++) {
+            if (i != j) {
+              if (
+                dist(circles[i].x, circles[i].y, circles[j].x, circles[j].y) <=
+                circles[i].r + circles[j].r
+              ) {
+                circles[i].dx = -circles[i].dx;
+                circles[i].dy = -circles[i].dy;
+              }
+            }
+          }
         }
       }
 
       //update screen (every time elements are drawn)
       function update() {
-        if (mouse.x > monster.x) monster.x += 3;
-        if (mouse.y > monster.y) monster.y += 3;
-        if (mouse.x < monster.x) monster.x -= 3;
-        if (mouse.y < monster.y) monster.y -= 3;
+        if (mouse.x > monster.x) monster.x += 5;
+        if (mouse.y > monster.y) monster.y += 5;
+        if (mouse.x < monster.x) monster.x -= 5;
+        if (mouse.y < monster.y) monster.y -= 5;
 
         for (let i = 0; i < circles.length; i++) {
           circles[i].update();
@@ -140,6 +170,8 @@
       //draw on screen
       function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.font = "30px Arial";
+        ctx.fillText("Score : " + score, width / 2, 40);
         monster.draw();
         food.draw();
         for (let i = 0; i < circles.length; i++) circles[i].draw();
@@ -147,8 +179,16 @@
         detectCollision();
       }
 
-      //refresh screen
-      setInterval(draw);
+      let play = setInterval(draw, 20);
+
+      function gameOver() {
+        clearInterval(play);
+        ctx.font = "70px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("Game Over", width / 2, height / 2);
+        ctx.font = "30px Arial";
+        ctx.textAlign = "center";
+      }
     </script>
   </body>
 </html>
