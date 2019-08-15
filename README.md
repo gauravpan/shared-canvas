@@ -1,2 +1,3 @@
 ## shared-canvas
-  shared
+  Canvas + Web Socket
+  
